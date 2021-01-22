@@ -1,0 +1,178 @@
+---
+title: "Reproducible Research - Project 1"
+author: "Sofía Cardona"
+date: "22/1/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Loading and preprocessing the data
+
+```{r, echo = TRUE}
+require(tidyverse)
+require(ggplot2)
+
+setwd("C:/Users/Sofi/Desktop")
+
+data <- read_csv("activity.csv", col_names = T)
+
+str(data)
+```
+
+## What is mean total number of steps taken per day?
+
+Calculate the total steps per day
+
+```{r, echo = TRUE}
+steps_per_day <- data%>% 
+    group_by(date)%>%
+    summarise(total = sum(steps))
+```
+
+Make a histogram of the total number of steps taken each day
+
+```{r, echo=TRUE}
+ggplot(steps_per_day, aes(total)) + geom_histogram(binwidth = 1000, fill = "skyblue") +
+    xlab("Total steps per day") + ylab("Number of steps per day") +
+    ggtitle("Histogram of the total steps taken each day") +
+    theme_light()
+```
+
+Calculate and report the mean and median total number of steps taken per day
+
+```{r, echo = TRUE}
+mean(steps_per_day$total, na.rm = T) 
+
+median(steps_per_day$total, na.rm = T) 
+```
+
+## What is the average daily activity pattern?
+
+Calculate the mean of steps taken for each interval per day
+
+```{r, echo = TRUE}
+int_steps <- data%>%
+    group_by(interval)%>%
+    summarise(steps = mean(steps, na.rm = T))
+```
+
+Make a time series plot of the 5-minute interval (x-axis) and the average number
+of steps taken, averaged across all days (y-axis)
+
+```{r, echo = TRUE}
+ggplot(int_steps, aes(x=interval, y=steps)) +
+    geom_line(color = "green", size = 0.8) +
+    xlab("Five minute interval") +
+    ylab("Number of steps taken") +
+    ggtitle("Average daily activity pattern") +
+    theme_light()
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains
+the maximum number of steps?
+
+```{r, echo = TRUE}
+int_steps[which.max(int_steps$steps),]
+```
+
+The maximum average of steps are 206 and occurs in the 835th interval (8:35 am)
+
+
+## Imputing missing values
+
+Calculate and report the total number of missing values in the dataset 
+
+```{r, echo = TRUE}
+sum(is.na(data))
+```
+
+Are 2304 NA's in the dataset
+
+Chose a method for imputing all the missing values in the dataset. 
+
+In this case I imputed missing values with the interval average of steps across days
+
+Create a new dataset that is equal to the original dataset but with the missing 
+data filled in.
+
+```{r, echo = TRUE}
+data_imputed <- data %>%
+    group_by(interval) %>%
+    mutate(steps = ifelse(is.na(steps), mean(steps, na.rm = T), steps))
+```
+
+Calculate the total steps per day
+
+```{r, echo = TRUE}
+imputed_steps_per_day <- data_imputed%>% 
+    group_by(date)%>%
+    summarise(total = sum(steps))
+```
+
+Make a histogram of the total number of steps taken each day
+
+````{r, echo = TRUE}
+ggplot(imputed_steps_per_day, aes(total)) +
+    geom_histogram(binwidth = 1000, fill = "magenta") +
+    xlab("Total steps per day") + ylab("Number of steps per day") +
+    ggtitle("Histogram of the total steps taken each day") +
+    theme_light()
+```
+
+Calculate and report the mean and median total number of steps taken per day.
+
+```{r, echo = TRUE}
+mean(imputed_steps_per_day$total, na.rm = T) 
+
+median(imputed_steps_per_day$total, na.rm = T) 
+```
+
+Do these values differ from the estimates from the first part of the assignment?
+
+Before fill NA's:
+
+* mean  = 10766.19
+* median = 10765
+
+After fill NA's
+
+* mean  = 10766.19
+* median = 10766.19
+
+What is the impact of imputing missing data on the estimates of the total daily 
+number of steps?
+
+The mean didnt change, but the median increase and now is equal to the mean
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable (wday) in the dataset with two levels: "weekday" & "weekend"
+
+```{r, echo = TRUE}
+w_steps <- data_imputed %>%
+    mutate(wday = ifelse(weekdays(date) %in% c("sábado", "domingo"), "Weekend", "Weekday" ))
+
+w_steps <- w_steps %>% mutate(wday = as.factor(wday))
+```
+
+Group by interval and wday, then calculate mean number of steps
+
+```{r, echo = TRUE}
+w_int_steps <- w_steps %>% 
+    group_by(interval,wday) %>%
+    summarise(mean = mean(steps, na.rm = T))
+```
+Create time series plot with faceting on the new wday factor
+
+```{r, echo = TRUE}
+ggplot(w_int_steps, aes(interval, mean, col = wday)) + 
+    geom_line(show.legend = F) +
+    facet_grid(rows = w_int_steps$wday) +
+    xlab("Five minute interval") + ylab("Number of steps") +
+    ggtitle("Average of steps taken") +
+    theme_light()
+````
